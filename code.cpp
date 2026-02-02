@@ -5,7 +5,7 @@ using namespace std;
 struct Song {
     string title;
     string artist;
-    int duration;   // duration in seconds
+    int duration;   
     Song* next;
     Song* prev;
 };
@@ -34,6 +34,7 @@ public:
     void totalDuration();
     void savePlaylist(string filename);  
     void loadPlaylist(string filename);
+    void viewSavedFile(string filename);
 };
 
 void Playlist::addSong(string title, string artist, int duration) {
@@ -264,6 +265,23 @@ void Playlist::loadPlaylist(string filename) {
     cout << "Playlist loaded from " << filename << " successfully.\n";
 }
 
+void Playlist::viewSavedFile(string filename) {
+    ifstream inFile(filename);
+
+    if (!inFile) {
+        cout << "File not found.\n";
+        return;
+    }
+
+    string line;
+    cout << "\n--- Saved Playlist File Content ---\n";
+    while (getline(inFile, line)) {
+        cout << line << endl;
+    }
+
+    inFile.close();
+}
+
 int main() {
     Playlist myPlaylist;
     int choice;
@@ -283,6 +301,7 @@ int main() {
         cout << "9. Total Playlist Duration\n";
         cout << "10. Save Playlist\n";
         cout << "11. Load Playlist\n";
+        cout << "12. View Saved Playlist File\n";
         cout << "0. Exit\n";
         cout << "Enter your choice: ";
         cin >> choice;
@@ -350,6 +369,13 @@ int main() {
             cout << "Enter filename to load: ";
             getline(cin, title); // reuse title variable for filename
             myPlaylist.loadPlaylist(title);
+            break;
+            
+        case 12:
+            cin.ignore();
+            cout << "Enter filename to view: ";
+            getline(cin, title);
+            myPlaylist.viewSavedFile(title);
             break;
 
         case 0:
