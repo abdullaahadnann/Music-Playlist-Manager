@@ -35,6 +35,7 @@ public:
     void savePlaylist(string filename);  
     void loadPlaylist(string filename);
     void viewSavedFile(string filename);
+    void appendToFile(string filename);
 };
 
 void Playlist::addSong(string title, string artist, int duration) {
@@ -282,6 +283,26 @@ void Playlist::viewSavedFile(string filename) {
     inFile.close();
 }
 
+void Playlist::appendToFile(string filename) {
+    ofstream outFile(filename, ios::app); // append mode
+
+    if (!outFile) {
+        cout << "Error opening file.\n";
+        return;
+    }
+
+    Song* temp = head;
+    while (temp != NULL) {
+        outFile << temp->title << "|" 
+                << temp->artist << "|" 
+                << temp->duration << "\n";
+        temp = temp->next;
+    }
+
+    outFile.close();
+    cout << "Songs appended to " << filename << " successfully.\n";
+}
+
 int main() {
     Playlist myPlaylist;
     int choice;
@@ -302,6 +323,7 @@ int main() {
         cout << "10. Save Playlist\n";
         cout << "11. Load Playlist\n";
         cout << "12. View Saved Playlist File\n";
+        cout << "13. Append Songs to Existing File\n";
         cout << "0. Exit\n";
         cout << "Enter your choice: ";
         cin >> choice;
@@ -370,12 +392,19 @@ int main() {
             getline(cin, title); // reuse title variable for filename
             myPlaylist.loadPlaylist(title);
             break;
-            
+
         case 12:
             cin.ignore();
             cout << "Enter filename to view: ";
             getline(cin, title);
             myPlaylist.viewSavedFile(title);
+            break;
+
+        case 13:
+            cin.ignore();
+            cout << "Enter filename to append: ";
+            getline(cin, title);
+            myPlaylist.appendToFile(title);
             break;
 
         case 0:
