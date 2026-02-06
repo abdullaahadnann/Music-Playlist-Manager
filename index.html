@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Playlist Manager</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Music Playlist Manager</h1>
+
+        <!-- Add Song -->
+        <div class="add-song">
+            <input type="text" id="title" placeholder="Title">
+            <input type="text" id="artist" placeholder="Artist">
+            <input type="file" id="file" accept=".mp3, .wav">
+            <button id="addBtn">Add Song</button>
+        </div>
+
+        <!-- Playlist -->
+        <ul id="playlist"></ul>
+
+        <!-- Controls -->
+        <div class="controls">
+            <button id="prevBtn">⏮ Previous</button>
+            <button id="playBtn">▶ Play</button>
+            <button id="nextBtn">⏭ Next</button>
+            <button id="deleteBtn">🗑 Delete</button>
+        </div>
+
+        <!-- Audio Player (hidden) -->
+        <audio id="audio" controls></audio>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

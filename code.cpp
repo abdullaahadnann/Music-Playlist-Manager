@@ -1,418 +1,281 @@
 #include <iostream>
 #include <fstream>
+#include <string>
+#include <cstdlib>
+#include <filesystem>
+
 using namespace std;
+namespace fs = std::filesystem;
 
 struct Song {
     string title;
     string artist;
-    int duration;   
+    int duration;
+    string filePath;
     Song* next;
     Song* prev;
 };
 
-class Playlist {
-private:
-    Song* head;     // First song in playlist
-    Song* tail;     // Last song in playlist
-    Song* current;  // Currently playing song
+Song* head = nullptr;
+Song* current = nullptr;
 
-public:
-    // Constructor
-    Playlist() {
-        head = tail = current = NULL;
-    }
 
-    // Function prototypes
-    void addSong(string title, string artist, int duration);
-    void displayPlaylist();
-    void playCurrent();
-    void playNext();
-    void playPrevious();
-    void searchSong(string key);
-    void deleteSong(string key);
-    void sortPlaylist();
-    void totalDuration();
-    void savePlaylist(string filename);  
-    void loadPlaylist(string filename);
-    void viewSavedFile(string filename);
-    void appendToFile(string filename);
-};
+void addSong() {
+    Song* newSong = new Song;
 
-void Playlist::addSong(string title, string artist, int duration) {
-    Song* newSong = new Song();
-    newSong->title = title;
-    newSong->artist = artist;
-    newSong->duration = duration;
-    newSong->next = NULL;
-    newSong->prev = NULL;
+    cin.ignore();
+    cout << "Title: ";
+    getline(cin, newSong->title);
 
-    if (head == NULL) {
-        head = tail = current = newSong;  // first song
+    cout << "Artist: ";
+    getline(cin, newSong->artist);
+
+    cout << "Duration (seconds): ";
+    cin >> newSong->duration;
+
+    cin.ignore();
+    cout << "File path (.mp3/.wav): ";
+    getline(cin, newSong->filePath);
+
+    // Convert to absolute path
+    if (!fs::exists(newSong->filePath)) {
+        cout << "Warning: File does not exist. Please check the path.\n";
     } else {
-        tail->next = newSong;  // link last song to new song
-        newSong->prev = tail;  // link new song back to last
-        tail = newSong;         // update tail
+        newSong->filePath = fs::absolute(newSong->filePath).string();
     }
 
-    cout << "Song added: " << title << endl;
+    newSong->next = nullptr;
+    newSong->prev = nullptr;
+
+    if (!head) {
+        head = current = newSong;
+    } else {
+        Song* temp = head;
+        while (temp->next)
+            temp = temp->next;
+        temp->next = newSong;
+        newSong->prev = temp;
+    }
+
+    cout << "Song added.\n";
 }
 
-void Playlist::displayPlaylist() {
-    if (head == NULL) {
-        cout << "Playlist is empty.\n";
+// ---------------- DISPLAY ----------------
+void displayPlaylist() {
+    if (!head) {
+        cout << "Playlist empty.\n";
         return;
     }
 
-    Song* temp = head;  // start from the first song
-    cout << "\n--- Your Playlist ---\n";
-    while (temp != NULL) {
-        cout << temp->title << " - " << temp->artist
-             << " (" << temp->duration << " sec)" << endl;
-        temp = temp->next;  // move to next song
+    Song* temp = head;
+    int i = 1;
+    while (temp) {
+        cout << i++ << ". " << temp->title << " - " << temp->artist
+             << " (" << temp->duration << "s)\n";
+        temp = temp->next;
     }
 }
 
-void Playlist::playCurrent() {
-    if (current == NULL) {
-        cout << "No song is playing.\n";
-    } else {
-        cout << "Now playing: "
-             << current->title << " - "
-             << current->artist << endl;
+// ---------------- PLAY SONG ----------------
+void playSong(Song* song) {
+    if (!song) {
+        cout << "No song to play.\n";
+        return;
     }
+
+    if (!fs::exists(song->filePath)) {
+        cout << "Error: File not found at path: " << song->filePath << endl;
+        return;
+    }
+
+    cout << "Now Playing: " << song->title << " - " << song->artist << endl;
+
+    // Use quotes around the path to handle spaces
+    string command = "start \"\" \"" + song->filePath + "\"";
+    system(command.c_str());
 }
 
-void Playlist::playNext() {
-    if (current == NULL) {
-        cout << "Playlist is empty.\n";
-    }
-    else if (current->next == NULL) {
-        cout << "You are already at the last song.\n";
-    }
-    else {
+// ---------------- NEXT ----------------
+void playNext() {
+    if (current && current->next) {
         current = current->next;
-        playCurrent();
+        playSong(current);
+    } else {
+        cout << "No next song.\n";
     }
 }
 
-void Playlist::playPrevious() {
-    if (current == NULL) {
-        cout << "Playlist is empty.\n";
-    }
-    else if (current->prev == NULL) {
-        cout << "You are already at the first song.\n";
-    }
-    else {
+// ---------------- PREVIOUS ----------------
+void playPrev() {
+    if (current && current->prev) {
         current = current->prev;
-        playCurrent();
+        playSong(current);
+    } else {
+        cout << "No previous song.\n";
     }
 }
 
-void Playlist::searchSong(string key) {
-    if (head == NULL) {
-        cout << "Playlist is empty.\n";
-        return;
-    }
-
+// ---------------- DELETE SONG ----------------
+void deleteSong(string title) {
     Song* temp = head;
 
-    while (temp != NULL) {
-        if (temp->title == key) {
-            cout << "Song Found!\n";
-            cout << temp->title << " - "
-                 << temp->artist << " ("
-                 << temp->duration << " sec)\n";
-            return;
-        }
+    while (temp && temp->title != title)
         temp = temp->next;
-    }
 
-    cout << "Song not found.\n";
-}
-
-void Playlist::deleteSong(string key) {
-    if (head == NULL) {
-        cout << "Playlist is empty.\n";
-        return;
-    }
-
-    Song* temp = head;
-
-    // search the song
-    while (temp != NULL && temp->title != key) {
-        temp = temp->next;
-    }
-
-    if (temp == NULL) {
+    if (!temp) {
         cout << "Song not found.\n";
         return;
     }
 
-    // Case 1: Only one song
-    if (head == tail) {
-        head = tail = current = NULL;
-    }
-    // Case 2: Deleting first song
-    else if (temp == head) {
-        head = head->next;
-        head->prev = NULL;
-    }
-    // Case 3: Deleting last song
-    else if (temp == tail) {
-        tail = tail->prev;
-        tail->next = NULL;
-    }
-    // Case 4: Deleting middle song
-    else {
-        temp->prev->next = temp->next;
-        temp->next->prev = temp->prev;
-    }
+    if (temp == head)
+        head = temp->next;
 
-    // update current if needed
-    if (current == temp) {
+    if (temp->prev)
+        temp->prev->next = temp->next;
+
+    if (temp->next)
+        temp->next->prev = temp->prev;
+
+    if (current == temp)
         current = head;
-    }
 
     delete temp;
-    cout << "Song deleted successfully.\n";
+    cout << "Song deleted.\n";
 }
 
-void Playlist::sortPlaylist() {
-    if (head == NULL || head->next == NULL) {
-        cout << "Not enough songs to sort.\n";
-        return;
-    }
+// ---------------- SORT PLAYLIST ----------------
+void sortPlaylist() {
+    if (!head) return;
 
-    bool swapped;
-    Song* temp;
-
-    do {
-        swapped = false;
-        temp = head;
-
-        while (temp->next != NULL) {
-            if (temp->title > temp->next->title) {
-                // swap song data
-                swap(temp->title, temp->next->title);
-                swap(temp->artist, temp->next->artist);
-                swap(temp->duration, temp->next->duration);
-                swapped = true;
+    for (Song* i = head; i->next; i = i->next) {
+        for (Song* j = i->next; j; j = j->next) {
+            if (i->title > j->title) {
+                swap(i->title, j->title);
+                swap(i->artist, j->artist);
+                swap(i->duration, j->duration);
+                swap(i->filePath, j->filePath);
             }
-            temp = temp->next;
         }
-    } while (swapped);
-
-    cout << "Playlist sorted by song title.\n";
+    }
+    cout << "Playlist sorted.\n";
 }
 
-void Playlist::totalDuration() {
-    if (head == NULL) {
-        cout << "Playlist is empty.\n";
-        return;
-    }
-
-    int totalSec = 0;
+// ---------------- SAVE FILE ----------------
+void saveToFile() {
+    ofstream file("playlist.txt");
     Song* temp = head;
-    while (temp != NULL) {
-        totalSec += temp->duration;
+
+    while (temp) {
+        file << temp->title << "|"
+             << temp->artist << "|"
+             << temp->duration << "|"
+             << temp->filePath << endl;
         temp = temp->next;
     }
 
-    int minutes = totalSec / 60;
-    int seconds = totalSec % 60;
-
-    cout << "Total Playlist Duration: " << minutes << " min " 
-         << seconds << " sec\n";
+    file.close();
+    cout << "Playlist saved.\n";
 }
 
-void Playlist::savePlaylist(string filename) {
-    ofstream outFile(filename); // open file for writing
-
-    if (!outFile) {
-        cout << "Error opening file for writing.\n";
-        return;
-    }
-
-    Song* temp = head;
-    while (temp != NULL) {
-        outFile << temp->title << "|" << temp->artist << "|" << temp->duration << "\n";
-        temp = temp->next;
-    }
-
-    outFile.close();
-    cout << "Playlist saved to " << filename << " successfully.\n";
-}
-
-void Playlist::loadPlaylist(string filename) {
-    ifstream inFile(filename);
-    if (!inFile) {
-        cout << "File not found: " << filename << endl;
-        return;
-    }
+void loadFromFile() {
+    ifstream file("playlist.txt");
+    if (!file) return;
 
     string line;
-    while (getline(inFile, line)) {
-        size_t pos1 = line.find("|");
-        size_t pos2 = line.rfind("|");
+    while (getline(file, line)) {
+        if (line.empty()) continue;
 
-        string title = line.substr(0, pos1);
-        string artist = line.substr(pos1 + 1, pos2 - pos1 - 1);
-        int duration = stoi(line.substr(pos2 + 1));
+        size_t p1 = line.find("|");
+        size_t p2 = line.find("|", p1 + 1);
+        size_t p3 = line.find("|", p2 + 1);
 
-        addSong(title, artist, duration);
+        if (p1 == string::npos || p2 == string::npos || p3 == string::npos)
+            continue;
+
+        Song* newSong = new Song;
+        newSong->title = line.substr(0, p1);
+        newSong->artist = line.substr(p1 + 1, p2 - p1 - 1);
+
+        try {
+            newSong->duration = stoi(line.substr(p2 + 1, p3 - p2 - 1));
+        } catch (...) {
+            delete newSong;
+            continue;
+        }
+
+        newSong->filePath = line.substr(p3 + 1);
+        newSong->next = nullptr;
+        newSong->prev = nullptr;
+
+        if (!head) {
+            head = current = newSong;
+        } else {
+            Song* temp = head;
+            while (temp->next)
+                temp = temp->next;
+            temp->next = newSong;
+            newSong->prev = temp;
+        }
     }
 
-    inFile.close();
-    cout << "Playlist loaded from " << filename << " successfully.\n";
+    file.close();
 }
 
-void Playlist::viewSavedFile(string filename) {
-    ifstream inFile(filename);
-
-    if (!inFile) {
-        cout << "File not found.\n";
-        return;
-    }
-
-    string line;
-    cout << "\n--- Saved Playlist File Content ---\n";
-    while (getline(inFile, line)) {
-        cout << line << endl;
-    }
-
-    inFile.close();
-}
-
-void Playlist::appendToFile(string filename) {
-    ofstream outFile(filename, ios::app); // append mode
-
-    if (!outFile) {
-        cout << "Error opening file.\n";
-        return;
-    }
-
-    Song* temp = head;
-    while (temp != NULL) {
-        outFile << temp->title << "|" 
-                << temp->artist << "|" 
-                << temp->duration << "\n";
-        temp = temp->next;
-    }
-
-    outFile.close();
-    cout << "Songs appended to " << filename << " successfully.\n";
-}
-
+// ---------------- MENU ----------------
 int main() {
-    Playlist myPlaylist;
+    loadFromFile();
+
     int choice;
-    string title, artist;
-    int duration;
+    string title;
 
     do {
-        cout << "\n====== MUSIC PLAYLIST MANAGER ======\n";
+        cout << "\n--- MUSIC PLAYLIST MANAGER ---\n";
         cout << "1. Add Song\n";
         cout << "2. Display Playlist\n";
         cout << "3. Play Current Song\n";
         cout << "4. Play Next Song\n";
         cout << "5. Play Previous Song\n";
-        cout << "6. Search Song\n";
-        cout << "7. Delete Song\n";
-        cout << "8. Sort Playlist (by Title)\n";
-        cout << "9. Total Playlist Duration\n";
-        cout << "10. Save Playlist\n";
-        cout << "11. Load Playlist\n";
-        cout << "12. View Saved Playlist File\n";
-        cout << "13. Append Songs to Existing File\n";
+        cout << "6. Delete Song\n";
+        cout << "7. Sort Playlist\n";
+        cout << "8. Save Playlist\n";
         cout << "0. Exit\n";
-        cout << "Enter your choice: ";
+        cout << "Choice: ";
         cin >> choice;
 
         switch (choice) {
-
         case 1:
-            cin.ignore();
-            cout << "Enter song title: ";
-            getline(cin, title);
-            cout << "Enter artist name: ";
-            getline(cin, artist);
-            cout << "Enter duration (in seconds): ";
-            cin >> duration;
-            myPlaylist.addSong(title, artist, duration);
+            addSong();
             break;
-
         case 2:
-            myPlaylist.displayPlaylist();
+            displayPlaylist();
             break;
-
         case 3:
-            myPlaylist.playCurrent();
+            playSong(current);
             break;
-
         case 4:
-            myPlaylist.playNext();
+            playNext();
             break;
-
         case 5:
-            myPlaylist.playPrevious();
+            playPrev();
             break;
-
         case 6:
             cin.ignore();
-            cout << "Enter song title to search: ";
+            cout << "Enter title: ";
             getline(cin, title);
-            myPlaylist.searchSong(title);
+            deleteSong(title);
             break;
-
         case 7:
-            cin.ignore();
-            cout << "Enter song title to delete: ";
-            getline(cin, title);
-            myPlaylist.deleteSong(title);
+            sortPlaylist();
             break;
-        
         case 8:
-            myPlaylist.sortPlaylist();
+            saveToFile();
             break;
-        
-        case 9:
-            myPlaylist.totalDuration();
-            break;
-        
-        case 10:
-            cin.ignore();
-            cout << "Enter filename to save: ";
-            getline(cin, title); // reuse title variable for filename
-            myPlaylist.savePlaylist(title);
-            break;
-
-        case 11:
-            cin.ignore();
-            cout << "Enter filename to load: ";
-            getline(cin, title); // reuse title variable for filename
-            myPlaylist.loadPlaylist(title);
-            break;
-
-        case 12:
-            cin.ignore();
-            cout << "Enter filename to view: ";
-            getline(cin, title);
-            myPlaylist.viewSavedFile(title);
-            break;
-
-        case 13:
-            cin.ignore();
-            cout << "Enter filename to append: ";
-            getline(cin, title);
-            myPlaylist.appendToFile(title);
-            break;
-
         case 0:
-            cout << "Exiting Playlist Manager...\n";
+            saveToFile();
+            cout << "Bye.\n";
             break;
-
         default:
-            cout << "Invalid choice!\n";
+            cout << "Invalid choice.\n";
         }
 
     } while (choice != 0);
